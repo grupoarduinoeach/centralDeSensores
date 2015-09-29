@@ -43,6 +43,19 @@ unsigned char i, kp;
 
 int t[256];
 
+int temperatura_central=22;
+int passo_t=2;
+uint32_t cor_t=strand.Color(127, 0, 0);
+
+float pressao_central=93200;  // em São Paulo
+float passo_p=10000;
+
+uint32_t cor_p=strand.Color(127, 127, 0);
+
+int umidade_central=50;
+int passo_u=10;
+uint32_t cor_u=strand.Color(0, 0, 127);
+
 void setup()
 {
   Serial.begin(9600);
@@ -113,12 +126,30 @@ void loop()
     } else {
       analogWrite (buzzer, 0);
     }
+    kp = (kp + 1) % 3;
     Serial.print("kp= ");
     Serial.println(kp);
+    switch (kp) {
+      case 0: // temp
+        colorRuler(cor_t, 5+(bmp.readTemperature()-temperatura_central)/passo_t);
+        Serial.print ("LED temp=");
+        Serial.println (5+(bmp.readTemperature()-temperatura_central)/passo_t);
+        break;
+      case 1: // pres
+        colorRuler(cor_p, 5.0+(bmp.readPressure()-pressao_central)/passo_p);
+        Serial.print ("LED pressao=");
+        Serial.println ((bmp.readPressure()-pressao_central));
+        break;
+      case 2: // temp
+        colorRuler(cor_u, 5+(dht.readHumidity()-umidade_central)/passo_u);
+        Serial.print ("LED umidade=");
+        Serial.println (5+(dht.readHumidity()-umidade_central)/passo_u);
+        break;
+    }
   } else {
     t[i] = analogRead(tilt_pin);
     i++;
-
+/*
     // Some example procedures showing how to display to the pixels:
     switch (kp) {
       case 0: colorWipe(strand.Color(255, 0, 0), 50); break;
@@ -137,7 +168,8 @@ void loop()
 
     //delay(delayval); // Delay for a period of time (in milliseconds).
 
-    kp = (kp + 1) % 8;
+    kp = 0; //(kp + 1) % 9;
+    */
   }
   // em 08.09.2015, 16h30 a pressao em santos eh 1005hPa(http://www.cptec.inpe.br/cidades/tempo/4748).
   // em 08.09.2015, 18h06 a pressao na minha sala eh 923.12 (nao sei se o sensor eh tao preciso)
@@ -161,9 +193,23 @@ int shaking (void) {
   return (max - min) > 100;
 }
 
+void colorRuler(uint32_t c, int i) {
+  // light up i leds with color c
+  if ((i <= strand.numPixels())&&(i>=0)) {
+    i--;
+    for (int k = 0; k <= i; k++) {
+      strand.setPixelColor(k, c);
+    }
+    for (int k = i+1; k <= strand.numPixels(); k++) {
+      strand.setPixelColor(k, 0);
+    }
+    strand.show();
+  }
+}
+
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strand.numPixels(); i++) {
+  for (uint16_t i = 0; i < strand.numPixels(); i++) {
     strand.setPixelColor(i, c);
     strand.show();
     delay(wait);
@@ -173,9 +219,9 @@ void colorWipe(uint32_t c, uint8_t wait) {
 void rainbow(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256; j++) {
-    for(i=0; i<strand.numPixels(); i++) {
-      strand.setPixelColor(i, Wheel((i+j) & 255));
+  for (j = 0; j < 256; j++) {
+    for (i = 0; i < strand.numPixels(); i++) {
+      strand.setPixelColor(i, Wheel((i + j) & 255));
     }
     strand.show();
     delay(wait);
@@ -186,8 +232,8 @@ void rainbow(uint8_t wait) {
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strand.numPixels(); i++) {
+  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
+    for (i = 0; i < strand.numPixels(); i++) {
       strand.setPixelColor(i, Wheel(((i * 256 / strand.numPixels()) + j) & 255));
     }
     strand.show();
@@ -197,17 +243,17 @@ void rainbowCycle(uint8_t wait) {
 
 //Theatre-style crawling lights.
 void theaterChase(uint32_t c, uint8_t wait) {
-  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
-    for (int q=0; q < 3; q++) {
-      for (int i=0; i < strand.numPixels(); i=i+3) {
-        strand.setPixelColor(i+q, c);    //turn every third pixel on
+  for (int j = 0; j < 10; j++) { //do 10 cycles of chasing
+    for (int q = 0; q < 3; q++) {
+      for (int i = 0; i < strand.numPixels(); i = i + 3) {
+        strand.setPixelColor(i + q, c);  //turn every third pixel on
       }
       strand.show();
 
       delay(wait);
 
-      for (int i=0; i < strand.numPixels(); i=i+3) {
-        strand.setPixelColor(i+q, 0);        //turn every third pixel off
+      for (int i = 0; i < strand.numPixels(); i = i + 3) {
+        strand.setPixelColor(i + q, 0);      //turn every third pixel off
       }
     }
   }
@@ -215,17 +261,17 @@ void theaterChase(uint32_t c, uint8_t wait) {
 
 //Theatre-style crawling lights with rainbow effect
 void theaterChaseRainbow(uint8_t wait) {
-  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
-    for (int q=0; q < 3; q++) {
-      for (int i=0; i < strand.numPixels(); i=i+3) {
-        strand.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
+  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
+    for (int q = 0; q < 3; q++) {
+      for (int i = 0; i < strand.numPixels(); i = i + 3) {
+        strand.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
       }
       strand.show();
 
       delay(wait);
 
-      for (int i=0; i < strand.numPixels(); i=i+3) {
-        strand.setPixelColor(i+q, 0);        //turn every third pixel off
+      for (int i = 0; i < strand.numPixels(); i = i + 3) {
+        strand.setPixelColor(i + q, 0);      //turn every third pixel off
       }
     }
   }
@@ -235,10 +281,10 @@ void theaterChaseRainbow(uint8_t wait) {
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
+  if (WheelPos < 85) {
     return strand.Color(255 - WheelPos * 3, 0, WheelPos * 3);
   }
-  if(WheelPos < 170) {
+  if (WheelPos < 170) {
     WheelPos -= 85;
     return strand.Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
